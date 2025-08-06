@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      width: 350px;
+      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    
+    .header h1 {
+      font-size: 18px;
+      margin: 0;
+      color: #333;
+    }
+    
+    .toggle-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding: 10px;
+      background: #f6f8fa;
+      border-radius: 6px;
+    }
+    
+    .toggle-label {
+      font-weight: 500;
+      color: #333;
+    }
+    
+    .toggle {
+      position: relative;
+      width: 44px;
+      height: 24px;
+    }
+    
+    .toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: .4s;
+      border-radius: 24px;
+    }
+    
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+    
+    input:checked + .slider {
+      background-color: #28a745;
+    }
+    
+    input:checked + .slider:before {
+      transform: translateX(20px);
+    }
+    
+    .repositories-section {
+      margin-top: 20px;
+    }
+    
+    .repositories-section h3 {
+      font-size: 14px;
+      margin-bottom: 10px;
+      color: #333;
+    }
+    
+    .repository-input {
+      display: flex;
+      margin-bottom: 10px;
+    }
+    
+    .repository-input input {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid #d1d5da;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    
+    .repository-input button {
+      margin-left: 8px;
+      padding: 8px 16px;
+      background: #0366d6;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    
+    .repository-input button:hover {
+      background: #0256cc;
+    }
+    
+    .repository-list {
+      list-style: none;
+      padding: 0;
+      margin: 10px 0;
+    }
+    
+    .repository-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      background: #f6f8fa;
+      border-radius: 6px;
+      margin-bottom: 5px;
+      font-size: 14px;
+    }
+    
+    .remove-btn {
+      background: #dc3545;
+      color: white;
+      border: none;
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    
+    .remove-btn:hover {
+      background: #c82333;
+    }
+    
+    .help-text {
+      font-size: 12px;
+      color: #666;
+      margin-top: 10px;
+      line-height: 1.4;
+    }
+    
+    .status {
+      padding: 10px;
+      border-radius: 6px;
+      margin-top: 15px;
+      text-align: center;
+      font-size: 14px;
+    }
+    
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🤖 Dependency Auto Approver</h1>
+  </div>
+  
+  <div class="toggle-container">
+    <span class="toggle-label">Enable Auto Approval</span>
+    <label class="toggle">
+      <input type="checkbox" id="enableToggle">
+      <span class="slider"></span>
+    </label>
+  </div>
+  
+  <div class="repositories-section">
+    <h3>Allowed Repositories</h3>
+    <div class="repository-input">
+      <input type="text" id="repoInput" placeholder="owner/repository (e.g. microsoft/vscode)">
+      <button id="addRepo">Add</button>
+    </div>
+    <ul class="repository-list" id="repoList"></ul>
+    <div class="help-text">
+      Leave empty to allow all repositories, or specify which repositories should have auto-approval enabled.
+    </div>
+  </div>
+  
+  <div id="status" class="status" style="display: none;"></div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

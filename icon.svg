@@ -1,0 +1,29 @@
+<svg viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="64" cy="64" r="60" fill="#2ea043" stroke="#1f6b2b" stroke-width="2"/>
+  
+  <!-- Robot body -->
+  <rect x="44" y="48" width="40" height="45" rx="8" fill="#ffffff" stroke="#1f6b2b" stroke-width="2"/>
+  
+  <!-- Robot head -->
+  <rect x="50" y="32" width="28" height="20" rx="6" fill="#ffffff" stroke="#1f6b2b" stroke-width="2"/>
+  
+  <!-- Robot eyes -->
+  <circle cx="56" cy="40" r="3" fill="#2ea043"/>
+  <circle cx="72" cy="40" r="3" fill="#2ea043"/>
+  
+  <!-- Robot antenna -->
+  <line x1="64" y1="32" x2="64" y2="26" stroke="#1f6b2b" stroke-width="2"/>
+  <circle cx="64" cy="26" r="2" fill="#2ea043"/>
+  
+  <!-- Robot arms -->
+  <rect x="36" y="55" width="8" height="15" rx="4" fill="#ffffff" stroke="#1f6b2b" stroke-width="2"/>
+  <rect x="84" y="55" width="8" height="15" rx="4" fill="#ffffff" stroke="#1f6b2b" stroke-width="2"/>
+  
+  <!-- Checkmark in robot body -->
+  <path d="M52 68 L60 76 L76 60" stroke="#2ea043" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  
+  <!-- Robot legs -->
+  <rect x="50" y="88" width="8" height="12" rx="4" fill="#ffffff" stroke="#1f6b2b" stroke-width="2"/>
+  <rect x="70" y="88" width="8" height="12" rx="4" fill="#ffffff" stroke="#1f6b2b" stroke-width="2"/>
+</svg>
