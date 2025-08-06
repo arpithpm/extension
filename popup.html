@@ -191,6 +191,29 @@
   </div>
   
   <div class="repositories-section">
+    <h3>Your GitHub Username</h3>
+    <div class="repository-input">
+      <input type="text" id="usernameInput" placeholder="Your GitHub username (e.g. arpithpm)">
+      <button id="saveUsername">Save</button>
+    </div>
+    <div class="help-text">
+      Enter your GitHub username to check if you've already approved PRs.
+    </div>
+  </div>
+
+  <div class="repositories-section">
+    <h3>Auto-add Reviewers</h3>
+    <div class="repository-input">
+      <input type="text" id="reviewerInput" placeholder="Reviewer username or team (e.g. buzzards)">
+      <button id="addReviewer">Add</button>
+    </div>
+    <ul class="repository-list" id="reviewerList"></ul>
+    <div class="help-text">
+      Add usernames or team names to automatically request as reviewers after approval.
+    </div>
+  </div>
+
+  <div class="repositories-section">
     <h3>Allowed Repositories</h3>
     <div class="repository-input">
       <input type="text" id="repoInput" placeholder="owner/repository (e.g. microsoft/vscode)">
