@@ -59,9 +59,11 @@ class DependabotAutoApprover {
 
   async getSettings() {
     return new Promise((resolve) => {
-      chrome.storage.sync.get(["enabled", "repositories"], (result) => {
+      chrome.storage.sync.get(["enabled", "username", "reviewers", "repositories"], (result) => {
         resolve({
           enabled: result.enabled || false,
+          username: result.username || '',
+          reviewers: result.reviewers || [],
           repositories: result.repositories || [],
         });
       });
@@ -140,6 +142,59 @@ class DependabotAutoApprover {
     return false;
   }
 
+  isUserAlreadyApproved(username) {
+    if (!username) {
+      console.log("Dependabot Auto Approver: No username configured, using generic approval check");
+      return this.isAlreadyApproved();
+    }
+    
+    // Look for the specific user in the reviewers section
+    const userReviewElement = document.querySelector(`[data-assignee-name="${username}"]`);
+    if (!userReviewElement) {
+      console.log(`Dependabot Auto Approver: User ${username} not found in reviewers`);
+      return false;
+    }
+    
+    // Check if this user has approved
+    const approvalIcon = userReviewElement.parentElement?.querySelector('.octicon-check.color-fg-success');
+    const isApproved = !!approvalIcon;
+    
+    console.log(`Dependabot Auto Approver: User ${username} approval status:`, isApproved);
+    return isApproved;
+  }
+
+  getReviewersToAdd(configuredReviewers) {
+    const existingReviewers = new Set();
+    
+    // Check individual users
+    document.querySelectorAll('[data-assignee-name]').forEach(element => {
+      const username = element.getAttribute('data-assignee-name');
+      if (username) {
+        existingReviewers.add(username.toLowerCase());
+      }
+    });
+    
+    // Check teams (look for team mentions)
+    document.querySelectorAll('.js-team-mention').forEach(element => {
+      const teamName = element.textContent.trim();
+      if (teamName) {
+        // Extract team name from full path (e.g., "bmw-connectivity-buzzards" from "signavio/bmw-connectivity-buzzards")
+        const shortTeamName = teamName.split('/').pop() || teamName;
+        existingReviewers.add(shortTeamName.toLowerCase());
+        existingReviewers.add(teamName.toLowerCase()); // Also add full name
+      }
+    });
+    
+    console.log("Dependabot Auto Approver: Existing reviewers:", Array.from(existingReviewers));
+    
+    // Filter out reviewers that are already added
+    const reviewersToAdd = configuredReviewers.filter(reviewer => 
+      !existingReviewers.has(reviewer.toLowerCase())
+    );
+    
+    return reviewersToAdd;
+  }
+
   isPRMergeable() {
     // Always return true - we don't care about checks anymore
     return true;
@@ -147,19 +202,17 @@ class DependabotAutoApprover {
 
   async approvePR() {
     try {
-      // Check if this PR is already approved by checking for approval status
-      const alreadyApproved =
-        document.querySelector(".octicon-check.color-fg-success") &&
-        document.querySelector(
-          '[data-hovercard-url*="/users/"][data-assignee-name]'
-        );
+      const settings = await this.getSettings();
+      
+      // Check if this PR is already approved by the configured user
+      const userAlreadyApproved = this.isUserAlreadyApproved(settings.username);
 
-      if (alreadyApproved) {
+      if (userAlreadyApproved) {
         console.log(
-          "Dependabot Auto Approver: PR already approved, skipping approval step"
+          "Dependabot Auto Approver: PR already approved by user, skipping approval step"
         );
         // Go directly to adding reviewers
-        await this.addReviewers();
+        await this.addReviewers(settings);
         return true;
       }
 
@@ -173,7 +226,7 @@ class DependabotAutoApprover {
           "Dependabot Auto Approver: Add your review button not found"
         );
         // If button not found but not already approved, try adding reviewers anyway
-        await this.addReviewers();
+        await this.addReviewers(settings);
         return false;
       }
 
@@ -280,7 +333,7 @@ class DependabotAutoApprover {
       console.log("Dependabot Auto Approver: PR approved successfully");
 
       // Step 5: Add colleague reviewers
-      await this.addReviewers();
+      await this.addReviewers(settings);
 
       return true;
     } catch (error) {
@@ -290,9 +343,25 @@ class DependabotAutoApprover {
     return false;
   }
 
-  async addReviewers() {
+  async addReviewers(settings) {
     try {
       console.log("Dependabot Auto Approver: Adding colleague reviewers...");
+      
+      // Check if there are reviewers configured
+      if (!settings.reviewers || settings.reviewers.length === 0) {
+        console.log("Dependabot Auto Approver: No reviewers configured, skipping");
+        return true;
+      }
+      
+      // Check which reviewers need to be added
+      const reviewersToAdd = this.getReviewersToAdd(settings.reviewers);
+      
+      if (reviewersToAdd.length === 0) {
+        console.log("Dependabot Auto Approver: All configured reviewers already added");
+        return true;
+      }
+      
+      console.log("Dependabot Auto Approver: Reviewers to add:", reviewersToAdd);
 
       // Navigate back to the PR conversation page if we're on files page
       const currentUrl = window.location.href;
@@ -356,87 +425,117 @@ class DependabotAutoApprover {
         "Dependabot Auto Approver: Found reviewer input:",
         reviewerInput.id || reviewerInput.className
       );
-      console.log(
-        'Dependabot Auto Approver: Typing "buzzards" in reviewer field'
-      );
 
-      // Focus the input and type "buzzards"
-      reviewerInput.focus();
-      reviewerInput.value = "buzzards";
+      // Add each reviewer one by one
+      for (const reviewer of reviewersToAdd) {
+        console.log(`Dependabot Auto Approver: Adding reviewer: ${reviewer}`);
+        
+        // Focus the input and type reviewer name
+        reviewerInput.focus();
+        reviewerInput.value = reviewer;
 
-      // Trigger input events to simulate typing
-      const inputEvent = new Event("input", { bubbles: true });
-      reviewerInput.dispatchEvent(inputEvent);
+        // Trigger input events to simulate typing
+        const inputEvent = new Event("input", { bubbles: true });
+        reviewerInput.dispatchEvent(inputEvent);
 
-      // Also trigger keyup event which some systems listen for
-      const keyupEvent = new Event("keyup", { bubbles: true });
-      reviewerInput.dispatchEvent(keyupEvent);
+        // Also trigger keyup event which some systems listen for
+        const keyupEvent = new Event("keyup", { bubbles: true });
+        reviewerInput.dispatchEvent(keyupEvent);
 
-      console.log(
-        "Dependabot Auto Approver: Waiting for suggestions to appear..."
-      );
+        console.log(
+          `Dependabot Auto Approver: Waiting for suggestions for ${reviewer}...`
+        );
 
-      // Wait for suggestions to appear and get focused
-      let suggestionFound = false;
-      let attempts = 0;
-      const maxAttempts = 10; // Wait up to 5 seconds
+        // Wait for suggestions to appear and get focused
+        let suggestionFound = false;
+        let attempts = 0;
+        const maxAttempts = 10; // Wait up to 5 seconds
 
-      while (attempts < maxAttempts && !suggestionFound) {
-        await this.sleep(500);
+        while (attempts < maxAttempts && !suggestionFound) {
+          await this.sleep(500);
 
-        // Look for suggestion items that might appear
-        const suggestions =
-          document.querySelectorAll(".select-menu-item") ||
-          document.querySelectorAll('[role="menuitemcheckbox"]') ||
-          document.querySelectorAll(".js-username") ||
-          document.querySelectorAll('label[role="menuitemcheckbox"]');
+          // Look for suggestion items that might appear
+          const suggestions =
+            document.querySelectorAll(".select-menu-item") ||
+            document.querySelectorAll('[role="menuitemcheckbox"]') ||
+            document.querySelectorAll(".js-username") ||
+            document.querySelectorAll('label[role="menuitemcheckbox"]');
 
-        if (suggestions.length > 0) {
-          console.log(
-            "Dependabot Auto Approver: Found",
-            suggestions.length,
-            "suggestions"
-          );
-          suggestionFound = true;
-          break;
+          if (suggestions.length > 0) {
+            console.log(
+              `Dependabot Auto Approver: Found ${suggestions.length} suggestions for ${reviewer}`
+            );
+            suggestionFound = true;
+            break;
+          }
+
+          attempts++;
         }
 
-        attempts++;
+        if (suggestionFound) {
+          console.log(
+            `Dependabot Auto Approver: Suggestions appeared for ${reviewer}, waiting a bit more for focus...`
+          );
+          await this.sleep(1000); // Additional wait for focus
+        } else {
+          console.log(
+            `Dependabot Auto Approver: No suggestions appeared for ${reviewer}, proceeding with Enter`
+          );
+        }
+
+        // Simulate pressing Enter to select the focused suggestion
+        const enterEvent = new KeyboardEvent("keydown", {
+          key: "Enter",
+          code: "Enter",
+          keyCode: 13,
+          which: 13,
+          bubbles: true,
+        });
+        reviewerInput.dispatchEvent(enterEvent);
+
+        // Also try keypress event
+        const keypressEvent = new KeyboardEvent("keypress", {
+          key: "Enter",
+          code: "Enter",
+          keyCode: 13,
+          which: 13,
+          bubbles: true,
+        });
+        reviewerInput.dispatchEvent(keypressEvent);
+
+        // Wait a moment for the selection to be processed
+        await this.sleep(500);
+        
+        console.log(`Dependabot Auto Approver: Added reviewer ${reviewer}`);
       }
 
-      if (suggestionFound) {
-        console.log(
-          "Dependabot Auto Approver: Suggestions appeared, waiting a bit more for focus..."
-        );
-        await this.sleep(1000); // Additional wait for focus
-      } else {
-        console.log(
-          "Dependabot Auto Approver: No suggestions appeared, proceeding with Enter"
-        );
-      }
-
-      // Simulate pressing Enter to select the focused suggestion
-      const enterEvent = new KeyboardEvent("keydown", {
-        key: "Enter",
-        code: "Enter",
-        keyCode: 13,
-        which: 13,
+      console.log("Dependabot Auto Approver: Finalizing reviewer requests...");
+      
+      // After adding all reviewers, press Shift+Tab to focus the submit area, then Enter to submit
+      const shiftTabEvent = new KeyboardEvent("keydown", {
+        key: "Tab",
+        code: "Tab",
+        keyCode: 9,
+        which: 9,
+        shiftKey: true,
         bubbles: true,
       });
-      reviewerInput.dispatchEvent(enterEvent);
-
-      // Also try keypress event
-      const keypressEvent = new KeyboardEvent("keypress", {
-        key: "Enter",
-        code: "Enter",
-        keyCode: 13,
-        which: 13,
-        bubbles: true,
-      });
-      reviewerInput.dispatchEvent(keypressEvent);
-
-      // Wait a moment for the selection to be processed
+      reviewerInput.dispatchEvent(shiftTabEvent);
+      
+      // Wait a moment for focus to change
       await this.sleep(500);
+      
+      // Press Enter to submit the reviewer requests
+      const finalEnterEvent = new KeyboardEvent("keydown", {
+        key: "Enter",
+        code: "Enter",
+        keyCode: 13,
+        which: 13,
+        bubbles: true,
+      });
+      document.activeElement.dispatchEvent(finalEnterEvent);
+      
+      console.log("Dependabot Auto Approver: Pressed Shift+Tab and Enter to submit reviewers");
 
       console.log(
         "Dependabot Auto Approver: Clicking outside dropdown to send reviewer request..."
