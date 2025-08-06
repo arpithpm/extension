@@ -316,10 +316,39 @@ class DependabotAutoApprover {
       const keyupEvent = new Event('keyup', { bubbles: true });
       reviewerInput.dispatchEvent(keyupEvent);
       
-      // Wait a moment for suggestions to appear
-      await this.sleep(1000);
+      console.log('Dependabot Auto Approver: Waiting for suggestions to appear...');
       
-      // Simulate pressing Enter
+      // Wait for suggestions to appear and get focused
+      let suggestionFound = false;
+      let attempts = 0;
+      const maxAttempts = 10; // Wait up to 5 seconds
+      
+      while (attempts < maxAttempts && !suggestionFound) {
+        await this.sleep(500);
+        
+        // Look for suggestion items that might appear
+        const suggestions = document.querySelectorAll('.select-menu-item') ||
+                           document.querySelectorAll('[role="menuitemcheckbox"]') ||
+                           document.querySelectorAll('.js-username') ||
+                           document.querySelectorAll('label[role="menuitemcheckbox"]');
+        
+        if (suggestions.length > 0) {
+          console.log('Dependabot Auto Approver: Found', suggestions.length, 'suggestions');
+          suggestionFound = true;
+          break;
+        }
+        
+        attempts++;
+      }
+      
+      if (suggestionFound) {
+        console.log('Dependabot Auto Approver: Suggestions appeared, waiting a bit more for focus...');
+        await this.sleep(1000); // Additional wait for focus
+      } else {
+        console.log('Dependabot Auto Approver: No suggestions appeared, proceeding with Enter');
+      }
+      
+      // Simulate pressing Enter to select the focused suggestion
       const enterEvent = new KeyboardEvent('keydown', {
         key: 'Enter',
         code: 'Enter',
@@ -339,7 +368,66 @@ class DependabotAutoApprover {
       });
       reviewerInput.dispatchEvent(keypressEvent);
       
-      console.log('Dependabot Auto Approver: Added "buzzards" as reviewer');
+      // Wait a moment for the selection to be processed
+      await this.sleep(500);
+      
+      console.log('Dependabot Auto Approver: Clicking outside dropdown to send reviewer request...');
+      
+      // Debug: log what elements we can find
+      const titleSelectors = [
+        'h1.gh-header-title .js-issue-title',
+        'h1.gh-header-title',
+        '.js-issue-title', 
+        'h1[class*="title"]',
+        'bdi.js-issue-title',
+        '.markdown-title'
+      ];
+      
+      let prTitle = null;
+      for (const selector of titleSelectors) {
+        prTitle = document.querySelector(selector);
+        if (prTitle) {
+          console.log('Dependabot Auto Approver: Found title element with selector:', selector);
+          break;
+        }
+      }
+      
+      if (!prTitle) {
+        console.log('Dependabot Auto Approver: No title found, trying other clickable elements...');
+        // Try other safe elements to click
+        prTitle = document.querySelector('main') ||
+                 document.querySelector('[role="main"]') ||
+                 document.querySelector('.Layout-main') ||
+                 document.querySelector('#repo-content-pjax-container');
+      }
+      
+      if (prTitle) {
+        console.log('Dependabot Auto Approver: Clicking element to close dropdown:', prTitle.tagName, prTitle.className);
+        
+        // Create and dispatch a proper click event
+        const clickEvent = new MouseEvent('click', {
+          view: window,
+          bubbles: true,
+          cancelable: true
+        });
+        prTitle.dispatchEvent(clickEvent);
+        
+        // Also try direct click method
+        prTitle.click();
+        
+        console.log('Dependabot Auto Approver: Click events dispatched');
+      } else {
+        console.log('Dependabot Auto Approver: No suitable element found, clicking document body');
+        const clickEvent = new MouseEvent('click', {
+          view: window,
+          bubbles: true,
+          cancelable: true
+        });
+        document.body.dispatchEvent(clickEvent);
+        document.body.click();
+      }
+      
+      console.log('Dependabot Auto Approver: Added "buzzards" as reviewer and sent request');
       return true;
       
     } catch (error) {
